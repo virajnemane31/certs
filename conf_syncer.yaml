@@ -3,7 +3,7 @@ kind: Namespace
 metadata:
   name: sandbox
   labels:
-    cert-manager-tls: sandbox # Define namespace label for kubed
+    app: kubed # Define namespace label for kubed
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
