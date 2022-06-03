@@ -1,0 +1,15 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: websites
+  namespace: cert-manager
+spec:
+  secretName: websites
+  commonName: websites
+  issuerRef:
+    name: selfsigned-cluster-issuer
+    kind: Cluster-Issuer
+    group: cert-manager.io
+  secretTemplate:
+    annotations:
+      kubed.appscode.com/sync: "app=kubed"
