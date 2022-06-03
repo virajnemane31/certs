@@ -14,9 +14,9 @@ spec:
   secretName: sandbox-tls
   commonName: sandbox
   issuerRef:
-    name: sandbox-ca
-    kind: Issuer
+    name: selfsigned-cluster-issuer
+    kind: ClusterIssuer
     group: cert-manager.io
   secretTemplate:
     annotations:
-      kubed.appscode.com/sync: "cert-manager-tls=sandbox" # Sync certificate to matching namespaces
+      kubed.appscode.com/sync: "app=kubed" # Sync certificate to matching namespaces
