@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+  name: argocd-cm
+  namespace: argocd
+data:
+  # Argo CD's externally facing base URL (optional). Required when configuring SSO
+  url: https://some-host # kustomize patch
+
+  # Enables application status badge feature
+  statusbadge.enabled: 'true'
+
+  # Enables anonymous user access. The anonymous users get default role permissions specified argocd-rbac-cm.yaml.
+  users.anonymous.enabled: 'false'
+
+  # the URL for getting chat help, this will typically be your Slack channel for support
+  help.chatUrl: 'https://teams.microsoft.com/l/channel/19%3a04e3d3116a8e4bee9b117937a9b9389f%40thread.skype/DevOps?groupId=e13b2759-9e7d-420d-85af-4502d781afc9&tenantId=0c33cce8-883c-4ba5-b615-34a6e2b8ff38'
+  # the text for getting chat help, defaults to "Chat now!"
+  help.chatText: 'Chat With GMI @Kubernetes Team Now!'
+
+  # OIDC configuration as an alternative to dex (optional).
+  oidc.config: some-config # kustomize patch
+
+  # Git repositories configure Argo CD with (optional).
+  # This list is updated when configuring/removing repos from the UI/CLI
+  # Note: 'type: helm' field is supported in v1.3+. Use 'helm.repositories' for older versions.
+  # disables admin user. Admin is enabled by default
+  admin.enabled: 'true'
+
+  # Disable normal checks for ingress
+  resource.customizations: |
+    extensions/Ingress:
+      health.lua: |
+        hs = {}
+        hs.status = "Healthy"
+        hs.message = "Ingress Created"
+        return hs
+    networking.k8s.io/Ingress:
+      health.lua: |
+        hs = {}
+        hs.status = "Healthy"
+        hs.message = "Ingress Created"
+        return hs
+    # Ignore HPA Health Checks as it appears to be buggy when deployments or rollouts are updated
+    # See https://github.com/argoproj/argo-cd/issues/6287 for further info or fixes
+    autoscaling/HorizontalPodAutoscaler:
+      health.lua: |
+        hs = {}
+        hs.status = "Healthy"
+        hs.message = "Ignoring HPA Health Check"
+        return hs
+  resource.customizations.actions.batch_CronJob: |-
+    discovery.lua: |
+      actions = { }
+      actions["suspend"] = {["disabled"] = true}
+      actions["resume"] = {["disabled"] = true}
+      local suspend = false
+      if obj.spec.suspend ~= nil then
+          suspend = obj.spec.suspend
+      end
+      if suspend then
+          actions["resume"]["disabled"] = false
+      else
+          actions["suspend"]["disabled"] = false
+      end
+      return actions
+    definitions:
+    - name: suspend
+      action.lua: |
+        obj.spec.suspend = true
+        return obj
+    - name: resume
+      action.lua: |
+        if obj.spec.suspend ~= nil and obj.spec.suspend then
+            obj.spec.suspend = false
+        end
+        return obj
+  #adding action to scale down deployment
+  resource.customizations.actions.apps_Deployment: |-
+    discovery.lua: |
+      actions = {}
+      actions["ScaleToZero"] = {}
+      return actions
+    definitions:
+    - name: ScaleToZero
+      action.lua: |
+        if obj.spec.replicas > 0 then
+        obj.spec.replicas = 0
+        end
+        return obj
